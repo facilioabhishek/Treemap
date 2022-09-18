@@ -1,6 +1,7 @@
 
-<html>
+<html lang="en">
     <head>
+        <meta charset="UTF-8">
         <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
         <script type="text/javascript" src="https://static.facilio.com/apps-sdk/latest/facilio_apps_sdk.min.js"></script>
         <script
@@ -10,28 +11,91 @@
       <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
       <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.0.2/dist/chartjs-chart-treemap.min.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/element-ui/2.15.10/theme-chalk/index.min.css"/>
+        <script src="//unpkg.com/element-ui"></script>
+        <script src="//unpkg.com/element-ui/lib/umd/locale/en.js"></script>
+      
       <style>
         #Chart{ 
           height: 100% !important;
           width: 100% !important;
+          padding-bottom: 80px;
         }
       </style>
     </head>
     
     <body>
         <div id="app">
+            <div class="block">
+                <span class="demonstration" style="color: #ff3184 !important;margin-right:20px;margin-left:20px">Date Filter</span>
+                <el-date-picker
+                  v-model="value2"
+                  type="daterange"
+                  align="right"
+                  unlink-panels
+                  range-separator="To"
+                  start-placeholder="Start date"
+                  end-placeholder="End date"
+                  :picker-options="pickerOptions">
+                </el-date-picker>
+            </div>
             <div>
+                    <div style="background-image: linear-gradient(to right,red, yellow, green); margin-top: 20px;
+                    margin-bottom: 10px;
+                    width: 20%;
+                    margin-left: 41%;
+                    height: 15px;
+                    width: 28%;
+                    margin-left: 37%;">
+                    <span style="position: absolute;margin-left: -135px;">Max Avg Cost: {{maxValue}}</span>
+                    <span style="margin-left:5px;position: absolute; padding-left: 28%;">Min Avg Cost: {{minValue}}</span>
+            </div>
+            <div style="height:100%;">
                 <canvas id="Chart"></canvas>
             </div>
         </div>
     </body>
     
     <script type="text/javascript">
-        const colors = ['#006600', '#009900','#00cc00','#ffad99','#ff704d','#ff3300']
+          ELEMENT.locale(ELEMENT.lang.en)
+
+        const colors = ['#5ec343', '#86dc1d','#ece901','#f88a1f','#fda504','#f47533']
         var app = new Vue({
             el: '#app',
             data() {
                 return {
+                    minValue: 0,
+                    maxValue: 0,
+                    pickerOptions: 
+                    {
+                          shortcuts: [{
+                            text: 'Last week',
+                            onClick(picker) {
+                              const end = new Date();
+                              const start = new Date();
+                              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                              picker.$emit('pick', [start, end]);
+                            }
+                          }, {
+                            text: 'Last month',
+                            onClick(picker) {
+                              const end = new Date();
+                              const start = new Date();
+                              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+                              picker.$emit('pick', [start, end]);
+                            }
+                          }, {
+                            text: 'Last 3 months',
+                            onClick(picker) {
+                              const end = new Date();
+                              const start = new Date();
+                              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+                              picker.$emit('pick', [start, end]);
+                            }
+                          }]
+                    },
+                    value2: '',
+
                     resulttags:[],
                     workordersvsorg:{},
                     orgIdvsname: { 725647: "BK" ,727652: "EDC",725652: "EFM", 725648: "EHG", 725649: "EMG", 725651: "EP", 725650: "ERG"} ,
@@ -56,12 +120,12 @@
                           tree: null,
                           key: "Cost Per Workorder",
                           groups: ['ORG'],
-                          spacing: 0,
+                          spacing: 1,
                           borderWidth: 1,
                           labels:{ 
                               display:true,
                               formatter: function(data){
-                                    return [`${data.raw.g}`, `No of Workorders: ${data.raw._data.children[0].workorder}`,`Cost per workorder: ${data.raw.v}`]
+                                    return [`${data.raw.g}`, `No of Workorders: ${data.raw._data.children[0].workorder}`,`Avg Cost: ${data.raw.v}`]
                               }        
                           },
                             backgroundColor: function(ctx){
@@ -80,7 +144,20 @@
                             text: 'Workorder Vs Average Cost'
                           },
                           legend: {
-                            display: false
+                                display:false,
+                                // type: "range",                        
+                                // treeSeries: [
+                                //     { id : 'ERG', color :  '#f47533'},
+                                //     { id : 'EHG', color :  '#fda504'},
+                                //     { id : 'BK' , color :  '#f88a1f'} ,
+                                //     { id : 'EP' , color :  '#ece901'} ,
+                                //     { id : 'EMG', color :  '#86dc1d'},
+                                //     { id : 'EFM', color :  '#5ec343'}
+                                // ],
+                                // halign: "right",
+                                // valign: "top",
+                                title:false,
+                                align: 'right'
                           },
                           tooltips: { enabled: false }
                         }
@@ -99,7 +176,6 @@
                 .invokeFacilioAPI("/v3/report/execute", self.option)
                 .then((res) => 
                 {
-                    debugger
                   res.data.reportData.data.forEach(org_data => 
                   {
                     if(org_data.X && self.orgIdvsname[org_data.X])
@@ -130,11 +206,15 @@
                                 let avgval = org_obj['Cost Per Workorder']/self.workordersvsorg[org_obj['ORG']]
                                 org_obj['Cost Per Workorder'] = Math.round(avgval)
                                 org_obj['workorder'] = self.workordersvsorg[org_obj['ORG']]
+                                org_obj['id'] = org_obj['ORG']
+                                org_obj['parent'] = org_obj['ORG']
                         }
                       }
                      })
                     .then(function(){
                       self.resulttags = self.resulttags.sort((a, b) => a['Cost Per Workorder'] - b['Cost Per Workorder']);
+                      self.minValue = self.resulttags[0]['Cost Per Workorder']
+                      self.maxValue = self.resulttags[self.resulttags.length -1]['Cost Per Workorder']
                       var canvas = document.getElementById("Chart");
                       var ctx = canvas.getContext("2d");
                       self.config.data.datasets[0].tree = self.resulttags
